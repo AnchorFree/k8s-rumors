@@ -48,7 +48,7 @@ watchSecret () {
 		echo "$(date '+%Y-%m-%d %H:%M:%S') starting secret watch loop"
 		kubectl -n "${ORIGIN_NAMESPACE}" get secret "${SECRET}" --watch --no-headers -o "custom-columns=:metadata.name" | \
 		while read secret; do
-            patchSecret 
+            [[ -v PEM_PATCH ]] && patchSecret 
 			export=$(kubectl -n "${NAMESPACE}" get secret "${secret}" -o yaml --export)
             for ns in $(kubectl get ns --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name"); do
                 if [[ "${ns}" != "${NAMESPACE}" ]]; then

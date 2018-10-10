@@ -5,6 +5,20 @@ set -e
 [[ ! -v ORIGIN_NAMESPACE ]] && echo "ORIGIN_NAMESPACE is not defined" && exit 1
 [[ ! -v DEST_NAMESPACES ]] && echo "DEST_NAMESPACES is not defined" && exit 1
 
+patchSecret () {
+
+    PEM=$(kubectl get -n ${ORIGIN_NAMESPACE} secret ${SECRET} -o jsonpath='{.data.tls\.pem}')
+    if [[ "${PEM}" == "" ]]; then
+        crt64=$(kubectl get -n ${ORIGIN_NAMESPACE} secret ${SECRET} -o jsonpath='{.data.tls\.crt}')
+        key64=$(kubectl get -n ${ORIGIN_NAMESPACE} secret ${SECRET} -o jsonpath='{.data.tls\.key}')
+        crt=$(echo "${crt64}" |base64 -d)
+        key=$(echo "${key64}" |base64 -d)
+        PEM=$(echo -e "${crt}\n${key}"|base64 -w0)
+        kubectl -n ${ORIGIN_NAMESPACE} patch secret ${SECRET} --patch="{\"data\": {\"tls.pem\": \"${PEM}\" } }"
+    fi
+
+}
+
 watchNamespaces () {
 
 	while :; do
@@ -34,6 +48,7 @@ watchSecret () {
 		echo "$(date '+%Y-%m-%d %H:%M:%S') starting secret watch loop"
 		kubectl -n "${ORIGIN_NAMESPACE}" get secret "${SECRET}" --watch --no-headers -o "custom-columns=:metadata.name" | \
 		while read secret; do
+            patchSecret 
 			export=$(kubectl -n "${NAMESPACE}" get secret "${secret}" -o yaml --export)
             for ns in $(kubectl get ns --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name"); do
                 if [[ "${ns}" != "${NAMESPACE}" ]]; then

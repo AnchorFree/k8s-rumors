@@ -40,3 +40,7 @@ The name of the namespace where the secret lives
 * **DEST_NAMESPACES**  
 Space separated names of the namespaces where the secret should be propagated to.
 
+* **PEM_PATCH**
+If set to any value, `k8s-rumors` will patch the secret when replicating:
+if there is no **tls.pem** field in the secret data, it will concatenate **tls.crt** and
+**tls.key** fields, and put the result into **tls.pem** field.

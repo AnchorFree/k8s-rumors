@@ -28,7 +28,7 @@ watchNamespaces () {
 		kubectl get ns --watch --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name" | \
 		while read ns; do
 		  if [[ "${ns}" != "${ORIGIN_NAMESPACE}" ]]; then
-			for dest in "${DEST_NAMESPACES[@]}"; do
+			for dest in ${DEST_NAMESPACES[@]}; do
 				if [[ "${dest}" == "${ns}" ]]; then
 					echo "$(date '+%Y-%m-%d %H:%M:%S') namespace - ${ns}"
 					kubectl -n "${ORIGIN_NAMESPACE}" get secret "${SECRET}" -o yaml --export | \
@@ -52,7 +52,7 @@ watchSecret () {
 			export=$(kubectl -n "${NAMESPACE}" get secret "${secret}" -o yaml --export)
             for ns in $(kubectl get ns --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name"); do
                 if [[ "${ns}" != "${NAMESPACE}" ]]; then
-                    for dest in "${DEST_NAMESPACES[@]}"; do
+                    for dest in ${DEST_NAMESPACES[@]}; do
                         if [[ "${ns}" == "${dest}" ]]; then
                           echo "$(date '+%Y-%m-%d %H:%M:%S') namespace - ${ns}"
                           echo "${export}" | kubectl -n "${ns}" apply -f -

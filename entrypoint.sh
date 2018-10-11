@@ -13,7 +13,7 @@ patchSecret () {
         key64=$(kubectl get -n ${ORIGIN_NAMESPACE} secret ${SECRET} -o jsonpath='{.data.tls\.key}')
         crt=$(echo "${crt64}" |base64 -d)
         key=$(echo "${key64}" |base64 -d)
-        PEM=$(echo -e "${crt}\n${key}"|base64)
+        PEM=$(echo -e "${crt}\n${key}"|base64|tr -d '\n')
         kubectl -n ${ORIGIN_NAMESPACE} patch secret ${SECRET} --patch="{\"data\": {\"tls.pem\": \"${PEM}\" } }"
     fi
 

@@ -26,7 +26,7 @@ watchNamespaces () {
 		echo "$(date '+%Y-%m-%d %H:%M:%S') starting namespaces watch loop"
 
 		kubectl get ns --watch --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name" | \
-		while read ns; do
+		while read -t3 ns; do
 		  if [[ "${ns}" != "${ORIGIN_NAMESPACE}" ]]; then
 			for dest in ${DEST_NAMESPACES[@]}; do
 				if [[ "${dest}" == "${ns}" ]]; then
@@ -47,7 +47,7 @@ watchSecret () {
 	while :; do
 		echo "$(date '+%Y-%m-%d %H:%M:%S') starting secret watch loop"
 		kubectl -n "${ORIGIN_NAMESPACE}" get secret "${SECRET}" --watch --no-headers -o "custom-columns=:metadata.name" | \
-		while read secret; do
+		while read -t3 secret; do
             [[ -v PEM_PATCH ]] && patchSecret 
 			export=$(kubectl -n "${NAMESPACE}" get secret "${secret}" -o yaml --export)
             for ns in $(kubectl get ns --field-selector="status.phase==Active" --no-headers -o "custom-columns=:metadata.name"); do

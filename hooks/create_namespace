@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+source ${WORKING_DIR}/common/functions.sh
+
+hook::config() {
+  cat <<EOF
+{
+   "onKubernetesEvent": [
+      {
+         "kind": "namespace",
+         "event": [
+            "add"
+         ]
+      }
+   ]
+}
+EOF
+}
+
+hook::trigger() {
+
+  for namespace in $(jq -r ".[] | select(.resourceName == \"${SECRET_NAMESPACE}\" | not ) | .resourceName" $BINDING_CONTEXT_PATH);
+  do
+    secret::sync_to_namespace ${namespace}
+  done
+
+}
+
+common::run_hook "$@"

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+source ${WORKING_DIR}/common/functions.sh
+
+hook::config() {
+  cat <<EOF
+{
+   "onStartup": 1
+}
+EOF
+
+}
+
+hook::trigger() {
+
+  secret::sync_all
+
+}
+
+common::run_hook "$@"

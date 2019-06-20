@@ -3,44 +3,54 @@ k8s-rumors
 
 ### Description
 
-`k8s-rumors` is a docker container with a simple bash script to 
-watch for a k8s secret in a certain namespace, and upon changes, propagate these changes to a predefined set of namespaces.
-It also watches namespace creation events, and when a new namespace gets created, and happens to be in the set of predefined
-destination namespaces, the secret will be replicated to the new namespace.
+`k8s-rumors` is a k8s operator to watch secrets in the `${SECRET_NAMESPACE}` which have `${SECRET_LABEL}`. 
+Whenever such a secret is created or updated, `k8s-rumors` replicate the secret to the namespaces defined
+in `${SECRET_ANNOTATION}` annotation of the secret. When the secret is deleted from the `${SECRET_NAMESPACE}`,
+k8s-rumors deletes it from every namespace it has been replicated to.
 
-`k8s-rumors` entrypoint, when started without arguments, will start a namespace watch loop.
-To start a secret watch loop, you should run another `k8s-rumors` container, configured to pass
-`secret` argument to the entrypoint. Here is a sample abstract for a helm chart:
-
-```
-containers:
-
-- name: k8s-rumors-ns-watcher
-  image: {{ .Values.image }}
-...
-- name: k8s-rumors-secret-watcher
-  image: {{ .Values.image }}
-  command:
-  - /usr/local/bin/entrypoint.sh 
-  - secret
-...
-
-```
+`k8s-rumors` is based on [shell-operator](https://github.com/AnchorFree/shell-operator).
 
 ### Configuration
 
 Configuration is done via environment variables:
 
-* **SECRET**  
-The name of the secret to replicate.
+* **SECRET_NAMESPACE**  
+The namespace to watch for secret modifications. Default is **secrets**.
 
-* **ORIGIN_NAMESPACE**  
-The name of the namespace where the secret lives
+* **SECRET_LABEL**  
+The label that a secret must have to be replicated. The label must be present,
+but its' value is not important. Default is **rumored**.
 
-* **DEST_NAMESPACES**  
-Space separated names of the namespaces where the secret should be propagated to.
+* **SECRET_ANNOTATION**  
+The annotation that defines destination namespaces. The value must be a string with comma separated
+namespace names. Default is **rumors/namespaces**.
 
-* **PEM_PATCH**
-If set to any value, `k8s-rumors` will patch the secret when replicating:
-if there is no **tls.pem** field in the secret data, it will concatenate **tls.crt** and
-**tls.key** fields, and put the result into **tls.pem** field.
+* **SECRET_PATCH_LABEL**  
+If this label is present and its' value is set to "pem", than `k8s-rumors`
+assumes that the secret is a SSL certificate with two data fields, `tls.crt` and `tls.key`,
+and will patch the secret during replication to have another data field, `tls.pem`, which is
+concatenation of the `tls.crt` and `tls.key` fields. Default is **patch_secret**.
+
+### Getting started
+
+* Create secrets namespace: `kubectl create ns secrets`
+* Install `k8s-rumors` via [helm chart](helm/k8s-rumors) with default values.
+* Create `ns1` namespace: `kubectl create ns ns1`
+* Create a secret in the `secrets` namespace:
+```
+apiVersion: v1
+metadata:
+  name: sample-secret
+  namespace: secrets
+  annotations:
+    rumors/namespaces: "ns1,ns2"
+  labels:
+    rumoured: "yes"
+type: Opaque
+kind: Secret
+data:
+  not-really-a-secret.txt: Uk1TIHdhcyByaWdodCEK
+```
+* Wait a couple of seconds and check that it was replicated to the `ns1`: `kubectl -n ns1 get secret sample-secret -o json`
+* Create `ns2` namespace and check that the secret was replicated again: `kubectl create namespace ns2 && sleep 3 && kubectl -n ns2 get secret sample-secret -o json`
+
